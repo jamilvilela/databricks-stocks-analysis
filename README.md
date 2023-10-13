@@ -14,3 +14,7 @@ This project get data from source systems:
 ### Databricks Visualization dashboard
 
 ![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/2023-10-13-initial/images/stocks_dashboard.png)
+
+### Databricks Repos integrated to Github
+
+![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/2023-10-13-initial/images/stocks_repository.png)
