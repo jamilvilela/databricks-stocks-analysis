@@ -17,12 +17,6 @@
 
 # COMMAND ----------
 
-# MAGIC
-# MAGIC %run ../utilities/mongodb_utils
-# MAGIC
-
-# COMMAND ----------
-
 from pyspark.sql.types import StructType, StructField, StringType
 from pyspark.sql.functions import lit, desc
 from delta import *
@@ -35,7 +29,6 @@ start_time = datetime.utcnow()
 util = elt_util()
 prm = Parameters()
 params = prm.get_params()
-mongodb = MongoDB()
 
 #log information to be saved into DynamoDB
 log = {}
@@ -85,6 +78,10 @@ def get_schema(tier:str = 'source') -> StructType:
                         StructField('ymd',StringType(), nullable=True)
                 ])
         return st
+
+# COMMAND ----------
+
+params['MONGO_CONNECTION_STRING']
 
 # COMMAND ----------
 

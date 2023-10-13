@@ -9,8 +9,8 @@ start_load = ''
 # DBTITLE 1,To installing necessary libraries
 # MAGIC %%capture --no-display
 # MAGIC
-# MAGIC !pip install -q requests #==2.28.2
-# MAGIC !pip install -q yfinance==0.2.28
+# MAGIC #!pip install -q requests #==2.28.2
+# MAGIC #!pip install -q yfinance==0.2.28
 
 # COMMAND ----------
 
