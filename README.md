@@ -18,3 +18,7 @@ This project get data from source systems:
 ### Databricks Repos integrated to Github
 
 ![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/2023-10-13-initial/images/stocks_repository.png)
+
+### AWS S3 bucket
+
+![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/master/images/stocks_s3_bucket.png)
