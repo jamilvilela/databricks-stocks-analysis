@@ -1,16 +1,9 @@
 # Databricks notebook source
 # DBTITLE 1,Parameter that indicates reprocess historical load
+
 # to inform the start date for reloading
 start_load = ''
  
-
-# COMMAND ----------
-
-# DBTITLE 1,To installing necessary libraries
-# MAGIC %%capture --no-display
-# MAGIC
-# MAGIC #!pip install -q requests #==2.28.2
-# MAGIC #!pip install -q yfinance==0.2.28
 
 # COMMAND ----------
 
@@ -19,9 +12,8 @@ import pandas as pd
 import yfinance as yf
 from delta import *
 from datetime import datetime, timedelta, date
-from pyspark.sql.types import StructType, StructField, StringType, TimestampType, DateType
-from pyspark.sql.functions import lit, asc, desc, sum, avg, stddev, mean, median, lag
-from pyspark.sql.functions import window, round, date_format, first
+from pyspark.sql.types import StructType, StructField, StringType, TimestampType, DateType, IntegerType
+from pyspark.sql.functions import *
 from pyspark.sql.column import cast
 from pyspark.sql import Window
 
@@ -186,12 +178,15 @@ else:
 # COMMAND ----------
 
 # DBTITLE 1,Authorization to AWS S3 access 
+
 ACCESS_KEY = util.get_access_key()
 SECRET_KEY = util.get_secret_key()
 
 sc._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.endpoint", f"s3.amazonaws.com") 
 sc._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.access.key", ACCESS_KEY) 
 sc._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.secret.key", SECRET_KEY) 
+
+spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 
 
 # COMMAND ----------
@@ -295,14 +290,14 @@ df_price_new = (df_price_new    .withColumn('dt_year', date_format('price_date',
                                 ## % var = (current - previous_day) / current
                                 .withColumn('perc_change_day', round( (100 * col('vl_change_day') / lag('vl_close',1).over(window_date)),2) )
 
-                                ## $ var = (current - previous_day) 
+                                ## $ var = (current - previous_week) 
                                 .withColumn('vl_change_week', round((col('vl_close') - lag('vl_close',5).over(window_date)),2) )
-                                ## % var = (current - previous_day) / current
+                                ## % var = (current - previous_week) / current
                                 .withColumn('perc_change_week', round((100 * col('vl_change_week') / lag('vl_close',5).over(window_date)),2) )
 
-                                ## $ var = (current - previous_day) 
+                                ## $ var = (current - previous_month) 
                                 .withColumn('vl_change_month', round((col('vl_close') - first('vl_close').over(window_month)),2) )
-                                ## % var = (current - previous_day) / current
+                                ## % var = (current - previous_month) / current
                                 .withColumn('perc_change_month', round((100 * col('vl_change_month') / lag('vl_close',1).over(window_month)),2) )
 
                                 ## simple average over 20 days
@@ -361,6 +356,78 @@ args = {'merge_filter'    : 'old.ticker = new.ticker and old.price_date = new.pr
        'partition'        : 'ticker'}
 
 util.merge_delta_table(df_price_new, 'GOLD', 'PRICE', args)
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 5 - creating summurized table into Gold layer
+# MAGIC
+
+# COMMAND ----------
+
+# DBTITLE 1,loading summarized prices data to Gold layer  
+
+schema_summ = StructType([ 
+                        StructField('ticker',StringType(), nullable=False), 
+                        StructField('dt_year',IntegerType(), nullable=False), 
+                        StructField('dt_month',IntegerType(), nullable=False), 
+                        StructField('price_date',DateType(), nullable=False), 
+                        StructField('vl_open',DoubleType(), nullable=False), 
+                        StructField('vl_low',DoubleType(), nullable=False), 
+                        StructField('vl_high',DoubleType(), nullable=False), 
+                        StructField('vl_close',DoubleType(), nullable=False), 
+                        StructField('vl_volume',DoubleType(), nullable=True), 
+                        StructField('z_score',DoubleType(), nullable=True), 
+                        StructField('vl_moving_avg_200_days',DoubleType(), nullable=True),
+                        StructField('vl_change_month',DoubleType(), nullable=True),
+                        StructField('perc_change_month',DoubleType(), nullable=True),
+                        StructField('vl_change_year',DoubleType(), nullable=True),
+                        StructField('perc_change_year',DoubleType(), nullable=True),
+                        StructField('ymd',StringType(), nullable=True),
+                ])
+
+window_year      = Window.partitionBy('ticker', 'dt_year').orderBy('price_date')
+
+monthly_df_new = (df_price_new
+                        .withColumn('dt_year',  date_format('price_date', 'y'))
+                        .withColumn('dt_month',  date_format('price_date', 'M'))
+                        .groupBy('ticker', 'dt_year', 'dt_month')
+                        .agg(last('price_date').alias('price_date')
+                             ,round(first('vl_open'), 2).alias('vl_open')
+                             ,round(min('vl_low'), 2).alias('vl_low')
+                             ,round(max('vl_high'), 2).alias('vl_high')
+                             ,round(last('vl_close'), 2).alias('vl_close')
+                             ,sum('vl_volume').alias('vl_volume')
+                             ,round(last('vl_moving_avg_200_days'), 2).alias('vl_moving_avg_200_days')                             
+                             )
+                        ## z_score = (current - average(close)) / stddev(close)  
+                        .withColumn("z_score", when(stddev("vl_close").over(window_date).isNull(), 0)
+                                                    .otherwise(round( (col("vl_close") - avg("vl_close").over(window_date)) / stddev("vl_close").over(window_date), 4)))
+
+                        .withColumn('vl_previous_month', when(row_number().over(window_date) == 1, col('vl_close'))
+                                                            .otherwise(lag('vl_close', 1).over(window_date)))
+                        
+                        ## $ var = (current - previous_month) 
+                        .withColumn('vl_change_month', round(col('vl_close') - when(row_number().over(window_date) == 1, col('vl_close'))
+                                                                                    .otherwise(lag('vl_close',1).over(window_date)),2) )
+                        ## % var = (current - previous_month) / current
+                        .withColumn('perc_change_month', round( 100 * col('vl_change_month') / col('vl_previous_month'), 2))
+
+                        .withColumn('vl_previous_year', lag('vl_close', 12, 0).over(window_date))
+                        
+                        ## $ var = (current - previous_year) 
+                        .withColumn('vl_change_year', round(col('vl_close') - col('vl_previous_year'), 2) )
+                        ## % var = (current - previous_year) / current
+                        .withColumn('perc_change_year', when(col('vl_previous_year') == 0, 0)
+                                                            .otherwise(round(100 * col('vl_change_year') / col('vl_previous_year'), 2)))
+                )
+
+args = {'merge_filter'    : 'old.ticker = new.ticker and old.dt_year = new.dt_year and old.dt_month = new.dt_month',
+       'update_condition' : f"old.price_date >= (current_date() - INTERVAL '{param_reprocess}' DAY)",
+       'partition'        : 'ticker'}
+
+util.merge_delta_table(monthly_df_new, 'GOLD', 'PRICE_MONTH', args)
 
 
 # COMMAND ----------

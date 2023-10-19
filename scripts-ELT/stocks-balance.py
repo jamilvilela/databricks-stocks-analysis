@@ -4,13 +4,6 @@
 
 # COMMAND ----------
 
-# MAGIC %%capture --no-display
-# MAGIC
-# MAGIC !pip install -q requests #==2.28.2
-# MAGIC !pip install -q yfinance==0.2.28
-
-# COMMAND ----------
-
 import pyspark.sql.functions as F 
 from pyspark.sql.types import StructType, StructField, DateType, StringType, DoubleType 
 from datetime import date, datetime, timedelta
@@ -29,12 +22,6 @@ start_time = datetime.now()
 
 # MAGIC
 # MAGIC %run ../utilities/elt_utils
-# MAGIC
-
-# COMMAND ----------
-
-# MAGIC
-# MAGIC %run ../utilities/mongodb_utils
 # MAGIC
 
 # COMMAND ----------
@@ -63,7 +50,7 @@ log = util.write_log(log)
 ACCESS_KEY = util.get_access_key()
 SECRET_KEY = util.get_secret_key()
 
-sc._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.endpoint", f"s3.amazonaws.com") 
+sc._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.endpoint", "s3.amazonaws.com") 
 sc._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.access.key", ACCESS_KEY) 
 sc._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.secret.key", SECRET_KEY) 
 
@@ -158,7 +145,10 @@ schema_silver = StructType([
 
 balance_df_new = util.change_column_names(balance_df, schema_bronze, schema_silver)
 
-args = {'merge_filter'    : 'old.ticker = new.ticker and old.balance_description = new.balance_description and old.balance_report_date = new.balance_report_date and old.balance_period = new.balance_period',
+args = {'merge_filter'    : '''     old.ticker = new.ticker 
+                                and old.balance_description = new.balance_description 
+                                and old.balance_report_date = new.balance_report_date 
+                                and old.balance_period = new.balance_period''',
        'update_condition' : "old.balance_value <> new.balance_value",
        'partition'        : 'balance_period'}
 
@@ -169,7 +159,7 @@ util.merge_delta_table(balance_df_new, 'SILVER', 'BALANCE', args)
 
 # DBTITLE 1,logging
 
-log = util.write_log(log, 'SILVER', 'INCOME')
+log = util.write_log(log, 'SILVER', 'BALANCE')
 
 
 # COMMAND ----------
@@ -181,6 +171,34 @@ args = {'merge_filter'    : 'old.ticker = new.ticker and old.balance_description
 }
 
 util.merge_delta_table(balance_df_new, "GOLD", "BALANCE", args)
+
+
+# COMMAND ----------
+
+
+schema_gold = StructType([ 
+                    StructField('event_period',StringType(), nullable=False), 
+                    StructField('ticker',StringType(), nullable=False), 
+                    StructField('event_description',StringType(), nullable=False), 
+                    StructField('event_report_date',DateType(), nullable=False), 
+                    StructField('event_value',DoubleType(), nullable=False), 
+                    StructField('ymd',StringType(), nullable=True),
+                    StructField('event_type',StringType(), nullable=False)
+                ])
+
+event_df = util.change_column_names(balance_df_new, schema_silver, schema_gold)
+event_df = event_df.withColumn('event_type', F.lit('BALANCE')) 
+
+args = {'merge_filter'    : '''     old.ticker = new.ticker 
+                                and old.event_description = new.event_description 
+                                and old.event_report_date = new.event_report_date 
+                                and old.event_period = new.event_period 
+                                and old.event_type = new.event_type''',
+        'update_condition' : "old.event_value <> new.event_value",
+        "partition": "ticker",
+}
+
+util.merge_delta_table(event_df, "GOLD", "FINANCIAL_EVENT", args)
 
 
 # COMMAND ----------

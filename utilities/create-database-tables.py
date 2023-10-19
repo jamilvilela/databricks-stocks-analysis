@@ -11,30 +11,6 @@
 
 # COMMAND ----------
 
-# MAGIC %run ../scripts-ELT/dim-date
-
-# COMMAND ----------
-
-# MAGIC %run ../scripts-ELT/stocks-prices
-# MAGIC
-
-# COMMAND ----------
-
-# MAGIC %run ../scripts-ELT/stocks-balance
-# MAGIC
-
-# COMMAND ----------
-
-# MAGIC %run ../scripts-ELT/stocks-income
-# MAGIC
-
-# COMMAND ----------
-
-# MAGIC %run ../scripts-ELT/stocks-selic
-# MAGIC
-
-# COMMAND ----------
-
 
 util = elt_util()
 params = util.get_params()
@@ -71,18 +47,18 @@ spark.sql(f"USE {params['DTBRCS_DB_NAME']}")
 # MAGIC #### 2 - Create tables:
 # MAGIC #####   2.1 calendar
 # MAGIC #####   2.2 prices
-# MAGIC #####   2.3 tickers 
-# MAGIC #####   2.4 dividends
-# MAGIC #####   2.5 company income
-# MAGIC #####   2.6 company balance
-# MAGIC #####   2.7 Selic rate
-# MAGIC #####   2.8 FED Fund rate
-# MAGIC #####   2.9 company profile 
+# MAGIC #####   2.3 prices monthly sumarized
+# MAGIC #####   2.4 tickers 
+# MAGIC #####   2.5 dividends
+# MAGIC #####   2.6 company financial events ( Income Statement, Balance Sheet)
+# MAGIC #####   2.7 Interest rate (USA FED Fund rate, Brazil Selic rate)
+# MAGIC #####   2.8 company profile 
+# MAGIC
 
 # COMMAND ----------
 
 
-tables = ['CALENDAR','TICKER','PRICE', 'INCOME', 'BALANCE', 'DIVIDEND', 'SELIC', 'EFFR']
+tables = ['CALENDAR', 'TICKER', 'PRICE', 'PRICE_MONTH', 'DIVIDEND', 'INTEREST_RATE', 'FINANCIAL_EVENT']
 
 for table in tables:
     stocks_create_table(table)

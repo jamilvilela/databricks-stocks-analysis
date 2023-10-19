@@ -25,12 +25,6 @@ start_time = datetime.now()
 
 # COMMAND ----------
 
-# MAGIC
-# MAGIC %run ../utilities/mongodb_utils
-# MAGIC
-
-# COMMAND ----------
-
 
 util = elt_util()
 prm = Parameters()
@@ -62,15 +56,17 @@ sc._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.secret.key", SECRET_KEY)
 # COMMAND ----------
 
 
-# to get the first record into gold layer 
-try:
-    selic_df = util.read_delta_table('GOLD', 'SELIC', 'date < "2014-01-01"')
-    selic_date_max = selic_df.select( F.max('date').alias('selic_date_max') ).collect()[0]['selic_date_max']
-    selic_date_max = date.fromisoformat(str(selic_date_max))
-except:
-    selic_date_max = date.fromisoformat('2013-01-01')
+# to get the first record from gold layer 
 
-selic_date_start = selic_date_max.strftime('%d/%m/%Y')
+try:
+    selic_df = util.read_delta_table('GOLD', 'INTEREST_RATE', 'rate_type = "SELIC" ')
+    rate_date_max = selic_df.select( F.max('rate_date').alias('rate_date_max') ).collect()[0]['rate_date_max']
+    rate_date_max = date.fromisoformat(str(rate_date_max)) if rate_date_max else date.fromisoformat('2013-01-01')
+except Exception as ex:
+    rate_date_max = date.fromisoformat('2013-01-01')
+    print(ex)
+
+selic_date_start = rate_date_max.strftime('%d/%m/%Y')
 selic_date_end = start_time.strftime('%d/%m/%Y')
 
 params = prm.get_params()
@@ -160,7 +156,10 @@ args = {'merge_filter'    : 'old.rate_type = new.rate_type and old.rate_date = n
        'update_condition' : "old.rate_value <> new.rate_value",
        'partition'        : 'rate_type'}
 
-util.merge_delta_table(selic_df, "GOLD", "SELIC", args)
+#util.merge_delta_table(selic_df, "GOLD", "SELIC", args)
+
+util.merge_delta_table(selic_df, "GOLD", "INTEREST_RATE", args)
+
 
 # COMMAND ----------
 
