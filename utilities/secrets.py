@@ -1,4 +1,5 @@
 # Databricks notebook source
+
 class Secrets():
     def __init__(self) -> None:
         pass
@@ -25,3 +26,8 @@ class Secrets():
         secrets['SECRET_KEY'] = secrets['SECRET_KEY'].replace("/", "%2F")
         
         return secrets
+    
+
+# COMMAND ----------
+
+
