@@ -1,4 +1,5 @@
 # Databricks notebook source
+# MAGIC
 # MAGIC %run ./secrets
 # MAGIC
 
@@ -15,7 +16,7 @@ class Parameters():
 
         params = {
                 "MONGO_DATABASE_NAME": "stocks_analysis",
-                "MONGO_COLLECTION_WALLET": "wallet",
+                "MONGO_COLLECTION_WALLET": "portfolio",
                 "MONGO_COLLECTION_TICKER": "tickers",
                 "MONGO_CONNECTION_STRING": "mongodb+srv://${MONGO_USER_NAME}:${MONGO_PASSWORD}@${MONGO_CLUSTER_NAME}.mongodb.net/${MONGO_DATABASE_NAME}",            
 
@@ -43,14 +44,17 @@ class Parameters():
 
                 "FOLDER_SYSTEM": "stocks-analysis",
                 "TABLE_PRICE": "prices",
+                "TABLE_PRICE_MONTH": "prices_month",
                 "TABLE_INCOME": "income",
                 "TABLE_TICKER": "tickers",
                 "TABLE_DIVIDEND": "dividends",
                 "TABLE_CALENDAR": "calendar",
                 "TABLE_SELIC": "selic",
                 "TABLE_EFFR": "effr",
+                "TABLE_INTEREST_RATE": "interest_rate",
                 "TABLE_PROFILE": "profile",
                 "TABLE_BALANCE": "balance",
+                "TABLE_FINANCIAL_EVENT": "financial_event",                
 
                 "DTBRCS_DB_NAME": "stocks_analysis",
 

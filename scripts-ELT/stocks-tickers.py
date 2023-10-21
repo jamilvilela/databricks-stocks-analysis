@@ -21,6 +21,7 @@ from pyspark.sql.types import StructType, StructField, StringType
 from pyspark.sql.functions import lit, desc
 from delta import *
 from datetime import datetime, timedelta
+import pandas as pd
 
 # COMMAND ----------
 
@@ -81,35 +82,27 @@ def get_schema(tier:str = 'source') -> StructType:
 
 # COMMAND ----------
 
-params['MONGO_CONNECTION_STRING']
+# MAGIC %md
+# MAGIC ## 1 - reading data source
+# MAGIC #### reading mongodb collection data source
+# MAGIC
 
 # COMMAND ----------
 
 def read_mongodb_tickers():
 
-    pipeline = "[ {$match: {'Ticker': {$ne: null} } } ]"
+    pipeline = [ {"$match": {'Ticker': {"$ne": None} } } ]
 
     ymd = datetime.utcnow().strftime('%Y%m%d')
 
-    df = ( spark.read
-                .format('mongo')
-                .option('spark.mongodb.input.uri', params['MONGO_CONNECTION_STRING'])
-                .option('database', params['MONGO_DATABASE_NAME'])
-                .option('collection', params['MONGO_COLLECTION_TICKER'])
-                .option('pipeline', pipeline)
-                .schema(get_schema('source'))
-                .load() )
+    tickers = mongodb.mongo_aggregate(Pipeline = pipeline, Collection = params['MONGO_COLLECTION_TICKER'])
     
+    pdf = pd.DataFrame(data=tickers)
+
+    df = spark.createDataFrame(data=pdf, schema=get_schema('source'))    
     df = df.withColumn('ymd', lit(ymd))
 
     return df
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 1 - reading data source
-# MAGIC #### reading mongodb collection data source
-# MAGIC
 
 # COMMAND ----------
 
@@ -132,10 +125,6 @@ args = {'merge_filter'    : 'old.Type = new.Type and old.Ticker = new.Ticker',
 
 util.merge_delta_table(df_ticker, "BRONZE", "TICKER", args)
 
-#df_ticker_target = read_delta_table( 'BRONZE', 'TICKER')
-
-# changing dataframe to the target schema 
-#df_ticker_target = spark.createDataFrame(df_ticker_target.rdd, get_schema('target'))
 
 
 # COMMAND ----------

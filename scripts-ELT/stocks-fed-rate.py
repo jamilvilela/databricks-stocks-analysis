@@ -26,12 +26,6 @@ start_time = datetime.now()
 
 # COMMAND ----------
 
-# MAGIC
-# MAGIC %run ../utilities/mongodb_utils
-# MAGIC
-
-# COMMAND ----------
-
 
 util = elt_util()
 prm = Parameters()
@@ -63,21 +57,21 @@ sc._jsc.hadoopConfiguration().set("spark.hadoop.fs.s3a.secret.key", SECRET_KEY)
 # COMMAND ----------
 
 
-# to get the first record into gold layer 
+# to get the first record from gold layer 
 try:
-    effr_df = util.read_delta_table('GOLD', 'EFFR', 'date < "2014-01-01"')
-    effr_date_max = effr_df.select( F.max('date').alias('effr_date_max') ).collect()[0]['effr_date_max']
-    effr_date_max = date.fromisoformat(str(effr_date_max))
-except:
-    effr_date_max = date.fromisoformat('2013-01-01')
+    effr_df = util.read_delta_table('GOLD', 'INTEREST_RATE', 'rate_type = "EFFR" ')
+    rate_date_max = effr_df.select( F.max('rate_date').alias('rate_date_max') ).collect()[0]['rate_date_max']
+    rate_date_max = date.fromisoformat(str(rate_date_max)) if rate_date_max else date.fromisoformat('2013-01-01')
+except Exception as ex:
+    rate_date_max = date.fromisoformat('2013-01-01')
+    print(ex)
 
 url = params['API_FED_EFFR']
 
-print(effr_date_max)
 
 # COMMAND ----------
 
-# DBTITLE 1,Getting data from Brazil Central Bank API
+# DBTITLE 1,Getting data from USA.gov API
 
 schema_bronze = StructType([ 
                     StructField('typeRate',StringType(), nullable=False), 
@@ -109,8 +103,13 @@ try:
 except Exception as ex:
     raise Exception(f"USA FED API Error: {ex}")
 
-
 effr_df_new = spark.createDataFrame(data=data, schema=schema_bronze)
+
+
+# COMMAND ----------
+
+# DBTITLE 1,Ingestion of the new data to Bronze layer
+
 effr_df_new = (effr_df_new.withColumn('year', F.split(F.col('effectiveDate'), '-', -1)[0])
                           .withColumn('month', F.split(F.col('effectiveDate'), '-', -1)[1])
                           .groupBy(
@@ -124,16 +123,12 @@ effr_df_new = (effr_df_new.withColumn('year', F.split(F.col('effectiveDate'), '-
                           .drop( 'first_rate', 'year', 'month')
                           )
 
-
-# COMMAND ----------
-
-# DBTITLE 1,Ingestion of the new data to Bronze layer
-
 args = {'merge_filter'    : 'old.typeRate = new.typeRate and old.effectiveDate = new.effectiveDate',
        'update_condition' : f"old.percentRate <> new.percentRate",
        'partition'        : 'ymd'}
 
 util.merge_delta_table(effr_df_new, 'BRONZE', 'EFFR', args)
+
 
 # COMMAND ----------
 
@@ -173,13 +168,16 @@ log = util.write_log(log, 'SILVER', 'EFFR')
 
 # COMMAND ----------
 
-# DBTITLE 1,Loading Selic rate to gold layer
+# DBTITLE 1,Loading effr tax rate to gold layer
 
 args = {'merge_filter'    : 'old.rate_type = new.rate_type and old.rate_date = new.rate_date',
        'update_condition' : f"old.rate_value <> new.rate_value",
        'partition'        : 'rate_type'}
 
-util.merge_delta_table(effr_df, "GOLD", "EFFR", args)
+#util.merge_delta_table(effr_df, "GOLD", "EFFR", args)
+
+util.merge_delta_table(effr_df, "GOLD", "INTEREST_RATE", args)
+
 
 # COMMAND ----------
 
