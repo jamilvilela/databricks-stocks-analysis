@@ -19,6 +19,14 @@ This project get data from source systems:
 
 ![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/2023-10-13-initial/images/stocks_repository.png)
 
+### Databricks Workflow
+
+![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/master/images/databricks-workflow-stocks.png)
+
 ### AWS S3 bucket
 
 ![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/master/images/stocks_s3_bucket.png)
+
+### AWS S3 bucket growth
+
+![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/master/images/aws-buckets-stocks.png)
