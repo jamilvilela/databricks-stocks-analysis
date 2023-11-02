@@ -10,6 +10,10 @@ This project get data from source systems:
 
 ![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/2023-10-13-initial/images/Stocks-Analysis-Data-Architecture.png)
 
+### Data model
+
+![Logo](https://github.com/jamilvilela/databricks-stocks-analysis/blob/master/images/Stocks-Analysis-Data-Model.png)
+
 
 ### Databricks Visualization dashboard
 
