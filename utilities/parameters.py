@@ -1,5 +1,4 @@
 # Databricks notebook source
-# MAGIC
 # MAGIC %run ./secrets
 # MAGIC
 
@@ -63,6 +62,7 @@ class Parameters():
                 "API_BCB_SELIC_ENDDATE": "dataFinal",
 
                 "API_FED_EFFR": "https://markets.newyorkfed.org/read?productCode=50&eventCodes=500&limit=2700&startPosition=0&sort=postDt:-1&format=xml",
+
                 "API_FED_DATE": "effectiveDate",
                 "API_FED_RATE": "percentRate"
         }
@@ -71,6 +71,7 @@ class Parameters():
 
         params['MONGO_CONNECTION_STRING'] = f"mongodb+srv://{params['MONGO_USER_NAME']}:{params['MONGO_PASSWORD']}@{params['MONGO_CLUSTER_NAME']}.mongodb.net/{params['MONGO_DATABASE_NAME']}" 
         params['LOG_CONNECTION_STRING']   = f"mongodb+srv://{params['MONGO_USER_NAME']}:{params['MONGO_PASSWORD']}@{params['MONGO_CLUSTER_NAME']}.mongodb.net/{params['LOG_DATABASE_NAME']}" 
+        params['API_FED_EFFR'] = params['API_FED_EFFR'].replace('&', '&amp;')
 
         return params
 

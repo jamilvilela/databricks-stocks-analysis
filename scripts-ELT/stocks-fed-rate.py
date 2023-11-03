@@ -81,12 +81,13 @@ schema_bronze = StructType([
                 ])
 
 try:
+    data=[]
     response = requests.get(url=url)
     if response.status_code == 200:
         content = et.fromstring(response.content)
         xml = et.tostring(content, encoding='utf-8').decode('utf-8')
 
-        data=[]
+
 
         for rate in content.findall(".//rate"):
             rate_dict = {}
@@ -190,8 +191,4 @@ log['elapsed_time'] = str(end_time - start_time)
 log = util.write_log(log, 'GOLD', 'EFFR')
 
 print('Elapsed time: ', log['elapsed_time'])
-
-
-# COMMAND ----------
-
 
